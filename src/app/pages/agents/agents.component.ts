@@ -1,4 +1,3 @@
-// agents.component.ts
 import { Component, OnInit } from "@angular/core";
 import { CommonModule } from "@angular/common";
 import { FormsModule } from "@angular/forms";
@@ -16,6 +15,12 @@ import { DropdownModule } from "primeng/dropdown";
 import { CalendarModule } from "primeng/calendar";
 import { CheckboxModule } from "primeng/checkbox";
 import { MultiSelectModule } from "primeng/multiselect";
+import { TooltipModule } from "primeng/tooltip";
+
+// Interface pour le formulaire (permet Date ou string pour dateOfBirth)
+interface AgentForm extends Omit<Agent, "dateOfBirth"> {
+  dateOfBirth: string | Date;
+}
 
 @Component({
   selector: "app-agents",
@@ -32,6 +37,7 @@ import { MultiSelectModule } from "primeng/multiselect";
     CalendarModule,
     CheckboxModule,
     MultiSelectModule,
+    TooltipModule,
   ],
   templateUrl: "./agents.component.html",
   styleUrls: ["./agents.component.scss"],
@@ -40,15 +46,23 @@ import { MultiSelectModule } from "primeng/multiselect";
 export class AgentsComponent implements OnInit {
   agents: Agent[] = [];
   filteredAgents: Agent[] = [];
-  currentAgent: Agent = this.emptyAgent();
+  currentAgent: AgentForm = this.emptyAgent();
+  selectedAgent: Agent | null = null;
   agentToDelete: Agent | null = null;
+
   isEditing = false;
   showDialog = false;
+  showDetailsModal = false;
   showDeleteConfirmation = false;
   isLoading = false;
   searchText = "";
 
-  genders = ["Male", "Female", "Other"];
+  genders = [
+    { label: "Homme", value: "Male" },
+    { label: "Femme", value: "Female" },
+    { label: "Autre", value: "Other" },
+  ];
+
   statusOptions = ["active", "inactive", "pending"];
   statusFilterOptions = [
     { label: "Tous les statuts", value: null },
@@ -84,7 +98,7 @@ export class AgentsComponent implements OnInit {
     this.loadAllAgents();
   }
 
-  emptyAgent(): Agent {
+  emptyAgent(): AgentForm {
     return {
       username: "",
       fullName: "",
@@ -152,42 +166,89 @@ export class AgentsComponent implements OnInit {
 
   showAddDialog() {
     this.currentAgent = this.emptyAgent();
-    this.selectedRoles = this.currentAgent.roles.map((role) => role.name);
+    this.selectedRoles = ["ROLE_USER"]; // Par défaut, nouveau agent a ROLE_USER
     this.isEditing = false;
-    this.showDialog = true;
+
+    // Force modal opening with timeout to ensure proper rendering
+    setTimeout(() => {
+      this.showDialog = true;
+    }, 0);
   }
 
   showEditDialog(agent: Agent) {
-    this.currentAgent = { ...agent };
+    // Create a deep copy of the agent and convert dateOfBirth to Date for calendar
+    this.currentAgent = {
+      ...JSON.parse(JSON.stringify(agent)),
+      dateOfBirth: new Date(agent.dateOfBirth),
+    };
+
+    // Set selected roles for multiselect
     this.selectedRoles = this.currentAgent.roles.map((role) => role.name);
     this.isEditing = true;
-    this.showDialog = true;
+
+    // Force modal opening with timeout to ensure proper rendering
+    setTimeout(() => {
+      this.showDialog = true;
+    }, 0);
+  }
+
+  showDetailsDialog(agent: Agent) {
+    this.selectedAgent = agent;
+
+    // Force modal opening with timeout to ensure proper rendering
+    setTimeout(() => {
+      this.showDetailsModal = true;
+    }, 0);
+  }
+
+  closeDialog() {
+    this.showDialog = false;
+    this.currentAgent = this.emptyAgent();
+    this.selectedRoles = [];
+    this.isEditing = false;
+  }
+
+  closeDetailsDialog() {
+    this.showDetailsModal = false;
+    this.selectedAgent = null;
   }
 
   saveAgent() {
     if (!this.isFormValid()) return;
 
+    // Prepare the agent data for API (convert Date back to string)
+    const agentToSave: Agent = {
+      ...this.currentAgent,
+      dateOfBirth:
+        this.currentAgent.dateOfBirth instanceof Date
+          ? this.currentAgent.dateOfBirth.toISOString().split("T")[0]
+          : this.currentAgent.dateOfBirth,
+    };
+
     // Update roles from selected roles
-    this.currentAgent.roles = this.selectedRoles.map((roleName) => ({
-      name: roleName,
-    }));
+    if (this.isEditing) {
+      agentToSave.roles = this.selectedRoles.map((roleName) => ({
+        name: roleName,
+      }));
+    } else {
+      // For new agents, always set ROLE_USER
+      agentToSave.roles = [{ name: "ROLE_USER" }];
+    }
 
     const operation = this.isEditing
-      ? this.agentService.updateAgent(
-          this.currentAgent.userId!,
-          this.currentAgent
-        )
-      : this.agentService.createAgent(this.currentAgent);
+      ? this.agentService.updateAgent(agentToSave.userId!, agentToSave)
+      : this.agentService.createAgent(agentToSave);
 
     operation.subscribe({
       next: () => {
         this.showSuccess(
           `Agent ${this.isEditing ? "modifié" : "créé"} avec succès`
         );
-        this.showDialog = false;
+        this.closeDialog();
         this.loadAllAgents();
       },
-      error: () => {
+      error: (error) => {
+        console.error("Error saving agent:", error);
         this.showError(
           `Erreur lors de ${this.isEditing ? "la modification" : "la création"} de l'agent`
         );
@@ -197,7 +258,11 @@ export class AgentsComponent implements OnInit {
 
   showDeleteConfirmationDialog(agent: Agent) {
     this.agentToDelete = agent;
-    this.showDeleteConfirmation = true;
+
+    // Force modal opening with timeout to ensure proper rendering
+    setTimeout(() => {
+      this.showDeleteConfirmation = true;
+    }, 0);
   }
 
   confirmDelete() {
@@ -206,7 +271,7 @@ export class AgentsComponent implements OnInit {
     this.agentService.deleteAgent(this.agentToDelete.userId).subscribe({
       next: () => {
         this.showSuccess("Agent supprimé avec succès");
-        this.showDeleteConfirmation = false;
+        this.cancelDelete();
         this.loadAllAgents();
       },
       error: () => {
@@ -221,20 +286,28 @@ export class AgentsComponent implements OnInit {
   }
 
   private isFormValid(): boolean {
-    if (
-      !this.currentAgent.username ||
-      !this.currentAgent.fullName ||
-      !this.currentAgent.email ||
-      !this.currentAgent.emailPec ||
-      !this.currentAgent.userAddress.country ||
-      !this.currentAgent.userAddress.state ||
-      !this.currentAgent.userAddress.addressLine ||
-      !this.currentAgent.userAddress.zipCode ||
-      this.selectedRoles.length === 0
-    ) {
+    const requiredFields = [
+      this.currentAgent.username,
+      this.currentAgent.fullName,
+      this.currentAgent.email,
+      this.currentAgent.emailPec,
+      this.currentAgent.userAddress.country,
+      this.currentAgent.userAddress.state,
+      this.currentAgent.userAddress.addressLine,
+      this.currentAgent.userAddress.zipCode,
+    ];
+
+    if (requiredFields.some((field) => !field)) {
       this.showWarn("Veuillez remplir tous les champs obligatoires");
       return false;
     }
+
+    // Validate roles for editing mode
+    if (this.isEditing && this.selectedRoles.length === 0) {
+      this.showWarn("Veuillez sélectionner au moins un rôle");
+      return false;
+    }
+
     return true;
   }
 

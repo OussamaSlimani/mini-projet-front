@@ -1,9 +1,9 @@
-<div class="container mx-auto p-4 bg-white rounded-lg shadow">
+<div class="card mx-auto p-4 bg-white rounded-lg shadow">
     <p-toast position="top-right"></p-toast>
 
     <!-- Header Section -->
     <div class="flex justify-between items-center mb-6">
-        <h2 class="text-xl font-bold text-gray-800">Gestion des Agents</h2>
+        <h2 class="text-xl font-bold">Gestion des Agents</h2>
         <div class="flex gap-2">
             <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-secondary"
                 (click)="loadAllAgents()"></button>
@@ -13,16 +13,16 @@
     </div>
 
     <!-- Search and Filters -->
-    <div class="mb-4 flex gap-4">
-        <span class="p-input-icon-left w-full">
-            <i class="pi pi-search"></i>
+    <div class="mb-4 flex items-center gap-3">
+        <span class="p-input-icon-left flex-1">
+            <i class="pi pi-search me-2 px-4"></i>
             <input type="text" pInputText placeholder="Rechercher un agent..." [(ngModel)]="searchText"
-                (input)="filterAgents()" class="w-full" />
+                (input)="filterAgents()" class="w-96" />
         </span>
-        <p-dropdown [options]="statusFilterOptions" [(ngModel)]="selectedStatusFilter" placeholder="Filtrer par statut"
-            (onChange)="filterAgents()"></p-dropdown>
-        <p-dropdown [options]="roleFilterOptions" [(ngModel)]="selectedRoleFilter" placeholder="Filtrer par rôle"
-            (onChange)="filterAgents()"></p-dropdown>
+        <p-dropdown [options]="statusFilterOptions" [(ngModel)]="selectedStatusFilter" placeholder="Tous les statuts"
+            (onChange)="filterAgents()" styleClass="w-48"></p-dropdown>
+        <p-dropdown [options]="roleFilterOptions" [(ngModel)]="selectedRoleFilter" placeholder="Tous les rôles"
+            (onChange)="filterAgents()" styleClass="w-48"></p-dropdown>
     </div>
 
     <!-- Table -->
@@ -38,7 +38,7 @@
                 <th>Statut</th>
                 <th>Date de Naissance</th>
                 <th>Dernière Connexion</th>
-                <th style="width: 100px">Actions</th>
+                <th style="width: 150px">Actions</th>
             </tr>
         </ng-template>
 
@@ -67,12 +67,15 @@
                 <td>{{ agent.lastLogin ? (agent.lastLogin | date:'dd/MM/yyyy HH:mm') : 'Jamais' }}</td>
                 <td>
                     <div class="flex gap-2">
+                        <button pButton icon="pi pi-eye"
+                            class="p-button-sm p-button-rounded p-button-text p-button-info"
+                            (click)="showDetailsDialog(agent)" pTooltip="Détails"></button>
                         <button pButton icon="pi pi-pencil"
                             class="p-button-sm p-button-rounded p-button-text p-button-warning"
-                            (click)="showEditDialog(agent)"></button>
+                            (click)="showEditDialog(agent)" pTooltip="Modifier"></button>
                         <button pButton icon="pi pi-trash"
                             class="p-button-sm p-button-rounded p-button-text p-button-danger"
-                            (click)="showDeleteConfirmationDialog(agent)"></button>
+                            (click)="showDeleteConfirmationDialog(agent)" pTooltip="Supprimer"></button>
                     </div>
                 </td>
             </tr>
@@ -90,8 +93,9 @@
 
     <!-- Add/Edit Dialog -->
     <p-dialog [(visible)]="showDialog" [modal]="true" [style]="{width: '700px'}"
-        [header]="isEditing ? 'Modifier l\'agent' : 'Nouvel Agent'">
-        <form (ngSubmit)="saveAgent()" class="grid grid-cols-2 gap-4">
+        [header]="isEditing ? 'Modifier l\'agent' : 'Nouvel Agent'" [closable]="true" [draggable]="false"
+        [resizable]="false">
+        <form (ngSubmit)="saveAgent()" #agentForm="ngForm" class="grid grid-cols-2 gap-4">
             <div class="field col-span-2">
                 <label class="block mb-2 font-semibold">Nom complet*</label>
                 <input type="text" pInputText [(ngModel)]="currentAgent.fullName" name="fullName" class="w-full"
@@ -106,8 +110,8 @@
 
             <div class="field">
                 <label class="block mb-2 font-semibold">Genre*</label>
-                <p-dropdown [options]="genders" [(ngModel)]="currentAgent.gender" placeholder="Sélectionner"
-                    class="w-full"></p-dropdown>
+                <p-dropdown [options]="genders" [(ngModel)]="currentAgent.gender" name="gender"
+                    placeholder="Sélectionner" class="w-full" required></p-dropdown>
             </div>
 
             <div class="field">
@@ -123,14 +127,15 @@
 
             <div class="field">
                 <label class="block mb-2 font-semibold">Date de naissance*</label>
-                <p-calendar [(ngModel)]="currentAgent.dateOfBirth" [maxDate]="maxBirthDate" dateFormat="yy-mm-dd"
-                    class="w-full"></p-calendar>
+                <p-calendar [(ngModel)]="currentAgent.dateOfBirth" name="dateOfBirth" [maxDate]="maxBirthDate"
+                    dateFormat="yy-mm-dd" class="w-full" required></p-calendar>
             </div>
 
-            <div class="field">
+            <!-- Roles - Only show in edit mode -->
+            <div class="field" *ngIf="isEditing">
                 <label class="block mb-2 font-semibold">Rôles*</label>
-                <p-multiSelect [options]="availableRoles" [(ngModel)]="selectedRoles" optionLabel="displayName"
-                    optionValue="name" class="w-full">
+                <p-multiSelect [options]="availableRoles" [(ngModel)]="selectedRoles" name="roles"
+                    optionLabel="displayName" optionValue="name" class="w-full">
                 </p-multiSelect>
             </div>
 
@@ -173,15 +178,105 @@
 
         <ng-template pTemplate="footer">
             <button pButton label="Annuler" icon="pi pi-times" class="p-button-outlined p-button-secondary"
-                (click)="showDialog = false"></button>
+                (click)="closeDialog()"></button>
             <button pButton [label]="isEditing ? 'Modifier' : 'Créer'" icon="pi pi-check" (click)="saveAgent()"
                 class="p-button-primary ml-2"></button>
         </ng-template>
     </p-dialog>
 
+    <!-- Details Dialog -->
+    <p-dialog [(visible)]="showDetailsModal" [modal]="true" [style]="{width: '800px'}" header="Détails de l'agent"
+        [closable]="true" [draggable]="false" [resizable]="false" *ngIf="selectedAgent">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Numéro Identifiant:</label>
+                <p class="text-gray-800">{{ selectedAgent.userId }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Nom complet:</label>
+                <p class="text-gray-800">{{ selectedAgent.fullName }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Nom d'utilisateur:</label>
+                <p class="text-gray-800">{{ selectedAgent.username }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Genre:</label>
+                <p class="text-gray-800">{{ selectedAgent.gender }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Email:</label>
+                <p class="text-gray-800">{{ selectedAgent.email }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Email PEC:</label>
+                <p class="text-gray-800">{{ selectedAgent.emailPec }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Date de naissance:</label>
+                <p class="text-gray-800">{{ selectedAgent.dateOfBirth | date:'dd/MM/yyyy' }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Date de création:</label>
+                <p class="text-gray-800">{{ selectedAgent.createdAt | date:'dd/MM/yyyy HH:mm' }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Dernière connexion:</label>
+                <p class="text-gray-800">{{ selectedAgent.lastLogin ? (selectedAgent.lastLogin | date:'dd/MM/yyyy
+                    HH:mm') : 'Jamais' }}</p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Statut:</label>
+                <p class="text-gray-800 text-center">
+                    <i [class]="'status-dot ' + (selectedAgent.active ? 'active' : 'inactive')"></i>
+                </p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Email PEC vérifié:</label>
+                <p class="text-gray-800">{{ selectedAgent.userInfo.emailPecVerified ? '✅ Vérifié' : '❌ Non vérifié' }}
+                </p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Utilisateur admin:</label>
+                <p class="text-gray-800">{{ selectedAgent.userInfo.adminUser ? 'Oui' : 'Non' }}</p>
+            </div>
+            <div class="field col-span-2">
+                <label class="block mb-1 font-semibold text-gray-600">Rôles:</label>
+                <div class="flex flex-wrap gap-2">
+                    <span *ngFor="let role of selectedAgent.roles"
+                        [class]="'role-badge role-' + role.name.toLowerCase()">
+                        {{ getRoleDisplayName(role.name) }}
+                    </span>
+                </div>
+            </div>
+            <div class="field col-span-2">
+                <label class="block mb-1 font-semibold text-gray-600">Adresse complète:</label>
+                <p class="text-gray-800">
+                    {{ selectedAgent.userAddress.addressLine }}<br>
+                    {{ selectedAgent.userAddress.state }}, {{ selectedAgent.userAddress.country }}<br>
+                    Code postal: {{ selectedAgent.userAddress.zipCode }}
+                </p>
+            </div>
+            <div class="field">
+                <label class="block mb-1 font-semibold text-gray-600">Statut utilisateur:</label>
+                <p class="text-gray-800">{{ selectedAgent.userInfo.status }}</p>
+            </div>
+            <div class="field" *ngIf="selectedAgent.userInfo.deleteDate">
+                <label class="block mb-1 font-semibold text-gray-600">Date de suppression:</label>
+                <p class="text-gray-800">{{ selectedAgent.userInfo.deleteDate | date:'dd/MM/yyyy HH:mm' }}</p>
+            </div>
+        </div>
+
+        <ng-template pTemplate="footer">
+            <button pButton label="Fermer" icon="pi pi-times" class="p-button-outlined p-button-secondary"
+                (click)="closeDetailsDialog()"></button>
+        </ng-template>
+    </p-dialog>
+
     <!-- Delete Confirmation Dialog -->
     <p-dialog [(visible)]="showDeleteConfirmation" [modal]="true" [style]="{width: '500px'}"
-        header="Confirmer la suppression" *ngIf="agentToDelete">
+        header="Confirmer la suppression" [closable]="true" [draggable]="false" [resizable]="false"
+        *ngIf="agentToDelete">
         <p>Êtes-vous sûr de vouloir supprimer l'agent "{{ agentToDelete.fullName }}"?</p>
         <p class="text-red-500 mt-2">Cette action est irréversible.</p>
         <ng-template pTemplate="footer">

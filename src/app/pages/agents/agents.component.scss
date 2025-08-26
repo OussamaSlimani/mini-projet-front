@@ -1,31 +1,3 @@
-// agents.component.scss
-:host ::ng-deep {
-  .p-datatable {
-    font-size: 0.9rem;
-
-    .p-datatable-thead > tr > th {
-      background-color: #f8fafc;
-      font-weight: 600;
-      color: #374151;
-      padding: 0.75rem 1rem;
-    }
-
-    .p-datatable-tbody > tr > td {
-      padding: 0.75rem 1rem;
-      vertical-align: middle;
-    }
-  }
-
-  .p-button-sm {
-    width: 2rem;
-    height: 2rem;
-  }
-
-  .p-multiselect {
-    width: 100%;
-  }
-}
-
 .verification-badge {
   padding: 0.25rem 0.5rem;
   border-radius: 0.25rem;
