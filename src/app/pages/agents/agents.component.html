@@ -1,1 +1,194 @@
-<p>agents works!</p>
+<div class="container mx-auto p-4 bg-white rounded-lg shadow">
+    <p-toast position="top-right"></p-toast>
+
+    <!-- Header Section -->
+    <div class="flex justify-between items-center mb-6">
+        <h2 class="text-xl font-bold text-gray-800">Gestion des Agents</h2>
+        <div class="flex gap-2">
+            <button pButton icon="pi pi-refresh" class="p-button-outlined p-button-secondary"
+                (click)="loadAllAgents()"></button>
+            <button pButton icon="pi pi-plus" label="Nouvel Agent" class="p-button-primary"
+                (click)="showAddDialog()"></button>
+        </div>
+    </div>
+
+    <!-- Search and Filters -->
+    <div class="mb-4 flex gap-4">
+        <span class="p-input-icon-left w-full">
+            <i class="pi pi-search"></i>
+            <input type="text" pInputText placeholder="Rechercher un agent..." [(ngModel)]="searchText"
+                (input)="filterAgents()" class="w-full" />
+        </span>
+        <p-dropdown [options]="statusFilterOptions" [(ngModel)]="selectedStatusFilter" placeholder="Filtrer par statut"
+            (onChange)="filterAgents()"></p-dropdown>
+        <p-dropdown [options]="roleFilterOptions" [(ngModel)]="selectedRoleFilter" placeholder="Filtrer par rôle"
+            (onChange)="filterAgents()"></p-dropdown>
+    </div>
+
+    <!-- Table -->
+    <p-table [value]="filteredAgents" [paginator]="true" [rows]="10" [rowsPerPageOptions]="[10, 20, 50]"
+        [loading]="isLoading" styleClass="p-datatable-striped p-datatable-gridlines">
+        <ng-template pTemplate="header">
+            <tr>
+                <th>Numéro Identifiant</th>
+                <th>Nom et Prénom</th>
+                <th>Courrier électronique</th>
+                <th>Vérification Email</th>
+                <th>Rôles</th>
+                <th>Statut</th>
+                <th>Date de Naissance</th>
+                <th>Dernière Connexion</th>
+                <th style="width: 100px">Actions</th>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="body" let-agent>
+            <tr>
+                <td class="font-semibold">{{ agent.userId }}</td>
+                <td>{{ agent.fullName }}</td>
+                <td>{{ agent.email }}</td>
+                <td class="text-center">
+                    <span
+                        [class]="'verification-badge ' + (agent.userInfo.emailPecVerified ? 'verified' : 'not-verified')">
+                        {{ agent.userInfo.emailPecVerified ? '✅ Vérifié' : '❌ Non vérifié' }}
+                    </span>
+                </td>
+                <td>
+                    <div class="flex flex-wrap gap-1">
+                        <span *ngFor="let role of agent.roles" [class]="'role-badge role-' + role.name.toLowerCase()">
+                            {{ getRoleDisplayName(role.name) }}
+                        </span>
+                    </div>
+                </td>
+                <td class="text-center">
+                    <i [class]="'status-dot ' + (agent.active ? 'active' : 'inactive')"></i>
+                </td>
+                <td>{{ agent.dateOfBirth | date:'dd/MM/yyyy' }}</td>
+                <td>{{ agent.lastLogin ? (agent.lastLogin | date:'dd/MM/yyyy HH:mm') : 'Jamais' }}</td>
+                <td>
+                    <div class="flex gap-2">
+                        <button pButton icon="pi pi-pencil"
+                            class="p-button-sm p-button-rounded p-button-text p-button-warning"
+                            (click)="showEditDialog(agent)"></button>
+                        <button pButton icon="pi pi-trash"
+                            class="p-button-sm p-button-rounded p-button-text p-button-danger"
+                            (click)="showDeleteConfirmationDialog(agent)"></button>
+                    </div>
+                </td>
+            </tr>
+        </ng-template>
+
+        <ng-template pTemplate="emptymessage">
+            <tr>
+                <td colspan="9" class="text-center py-6 text-gray-500">
+                    <i class="pi pi-users text-2xl mb-2"></i>
+                    <p>Aucun agent trouvé</p>
+                </td>
+            </tr>
+        </ng-template>
+    </p-table>
+
+    <!-- Add/Edit Dialog -->
+    <p-dialog [(visible)]="showDialog" [modal]="true" [style]="{width: '700px'}"
+        [header]="isEditing ? 'Modifier l\'agent' : 'Nouvel Agent'">
+        <form (ngSubmit)="saveAgent()" class="grid grid-cols-2 gap-4">
+            <div class="field col-span-2">
+                <label class="block mb-2 font-semibold">Nom complet*</label>
+                <input type="text" pInputText [(ngModel)]="currentAgent.fullName" name="fullName" class="w-full"
+                    required />
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Nom d'utilisateur*</label>
+                <input type="text" pInputText [(ngModel)]="currentAgent.username" name="username" class="w-full"
+                    required />
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Genre*</label>
+                <p-dropdown [options]="genders" [(ngModel)]="currentAgent.gender" placeholder="Sélectionner"
+                    class="w-full"></p-dropdown>
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Email*</label>
+                <input type="email" pInputText [(ngModel)]="currentAgent.email" name="email" class="w-full" required />
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Email PEC*</label>
+                <input type="email" pInputText [(ngModel)]="currentAgent.emailPec" name="emailPec" class="w-full"
+                    required />
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Date de naissance*</label>
+                <p-calendar [(ngModel)]="currentAgent.dateOfBirth" [maxDate]="maxBirthDate" dateFormat="yy-mm-dd"
+                    class="w-full"></p-calendar>
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Rôles*</label>
+                <p-multiSelect [options]="availableRoles" [(ngModel)]="selectedRoles" optionLabel="displayName"
+                    optionValue="name" class="w-full">
+                </p-multiSelect>
+            </div>
+
+            <div class="field col-span-2">
+                <label class="block mb-2 font-semibold">Pays*</label>
+                <input type="text" pInputText [(ngModel)]="currentAgent.userAddress.country" name="country"
+                    class="w-full" required />
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">État/Région*</label>
+                <input type="text" pInputText [(ngModel)]="currentAgent.userAddress.state" name="state" class="w-full"
+                    required />
+            </div>
+
+            <div class="field">
+                <label class="block mb-2 font-semibold">Code postal*</label>
+                <input type="number" pInputText [(ngModel)]="currentAgent.userAddress.zipCode" name="zipCode"
+                    class="w-full" required />
+            </div>
+
+            <div class="field col-span-2">
+                <label class="block mb-2 font-semibold">Adresse*</label>
+                <input type="text" pInputText [(ngModel)]="currentAgent.userAddress.addressLine" name="addressLine"
+                    class="w-full" required />
+            </div>
+
+            <div class="field col-span-2 flex gap-6">
+                <div class="flex items-center">
+                    <p-checkbox [(ngModel)]="currentAgent.active" [binary]="true" name="active"></p-checkbox>
+                    <label class="ml-2">Actif</label>
+                </div>
+                <div class="flex items-center">
+                    <p-checkbox [(ngModel)]="currentAgent.userInfo.emailPecVerified" [binary]="true"
+                        name="emailPecVerified"></p-checkbox>
+                    <label class="ml-2">Email PEC vérifié</label>
+                </div>
+            </div>
+        </form>
+
+        <ng-template pTemplate="footer">
+            <button pButton label="Annuler" icon="pi pi-times" class="p-button-outlined p-button-secondary"
+                (click)="showDialog = false"></button>
+            <button pButton [label]="isEditing ? 'Modifier' : 'Créer'" icon="pi pi-check" (click)="saveAgent()"
+                class="p-button-primary ml-2"></button>
+        </ng-template>
+    </p-dialog>
+
+    <!-- Delete Confirmation Dialog -->
+    <p-dialog [(visible)]="showDeleteConfirmation" [modal]="true" [style]="{width: '500px'}"
+        header="Confirmer la suppression" *ngIf="agentToDelete">
+        <p>Êtes-vous sûr de vouloir supprimer l'agent "{{ agentToDelete.fullName }}"?</p>
+        <p class="text-red-500 mt-2">Cette action est irréversible.</p>
+        <ng-template pTemplate="footer">
+            <button pButton label="Annuler" icon="pi pi-times" class="p-button-outlined p-button-secondary"
+                (click)="cancelDelete()"></button>
+            <button pButton label="Supprimer" icon="pi pi-trash" class="p-button-danger ml-2"
+                (click)="confirmDelete()"></button>
+        </ng-template>
+    </p-dialog>
+</div>
