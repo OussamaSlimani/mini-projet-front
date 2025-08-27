@@ -15,10 +15,9 @@
 
 - Démonstration de l'application :
 
-<video width="640" height="360" controls>
-  <source src="media/video_demo.mp4" type="video/mp4">
-  Votre navigateur ne supporte pas la balise vidéo.
-</video>
+![Capture d'écran de l'application](image/capture.png)
+
+[Télécharger la vidéo démo](image/video_demo.mp4)
 
 ## Structure du Projet (Fichiers Principaux)
 
