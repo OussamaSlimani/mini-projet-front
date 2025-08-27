@@ -35,7 +35,7 @@ import { DarkModeToggleComponent } from "./app.mode.toggle";
           <app-dark-mode-toggle></app-dark-mode-toggle>
         </div>
 
-        <!-- Logout button -->
+        <!-- Logout button 
         <div class="flex items-center gap-3">
           <button
             type="button"
@@ -45,6 +45,7 @@ import { DarkModeToggleComponent } from "./app.mode.toggle";
             label="Logout"
           ></button>
         </div>
+        -->
 
         <!-- Auth links -->
         <div class="flex items-center gap-2">
