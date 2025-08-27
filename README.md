@@ -11,11 +11,25 @@
 - **Recherche** : Rechercher par nom ou email
 - **Filtrage** : Filtrer par statut (actif/inactif) et rôles (Administrateur, Modérateur, Utilisateur)
 
-## Démonstration Vidéo
+## Démonstration
 
-- Démonstration de l'application :
+- Affichage de tous les agents enregistrés :
 
-![Capture d'écran de l'application](image/capture.png)
+![Liste des agents](image/capture.png)
+
+- Visualisation des informations détaillées pour un agent spécifique :
+
+![Détails d'un agent](image/datails.png)
+
+- Interface permettant de modifier les informations d'un agent :
+
+![Édition d'un agent](image/edit.png)
+
+- Supprimer un agent de la base de données :
+
+![Suppression d'un agent](image/del.png)
+
+- Vidéo de démonstration
 
 [Télécharger la vidéo démo](image/video_demo.mp4)
 
